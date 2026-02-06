@@ -3,16 +3,16 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1E2635', // Color para la barra (AppBar)
-      contrastText: '#FFFEF1', // Color para letras claras en la barra
+      main: '#1E2635',
+      contrastText: '#FFFEF1',
     },
     secondary: {
-      main: '#FEAA2D', // Color para botones
-      contrastText: '#1E2635', // Texto oscuro sobre botones amarillos
+      main: '#FEAA2D',
+      contrastText: '#1E2635',
     },
     text: {
       primary: '#1E2635',
-      secondary: '#676C72', // Color adicional para texto secundario
+      secondary: '#676C72',
     },
     background: {
       default: '#f5f5f5',
@@ -44,7 +44,6 @@ const theme = createTheme({
               backgroundColor: '#E6991A',
             },
           },
-          // Botones contained sin color específico usan secondary
           '&:not(.MuiButton-containedPrimary):not(.MuiButton-containedSecondary):not(.MuiButton-containedError):not(.MuiButton-containedSuccess):not(.MuiButton-containedInfo):not(.MuiButton-containedWarning)': {
             backgroundColor: '#FEAA2D',
             color: '#1E2635',

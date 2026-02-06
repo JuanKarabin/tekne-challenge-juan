@@ -1,16 +1,8 @@
-/**
- * Repositorio de operaciones — trazabilidad en tabla operations.
- */
-
 import { pool } from '../db';
 import type { OperationInsert, OperationStatus, OperationUpdateMetrics } from '../types';
 
 const TABLE = 'operations';
 
-/**
- * Crea una nueva operación (estado inicial RECEIVED o PROCESSING).
- * La tabla tiene id y operation_id; se rellena ambos con el mismo UUID.
- */
 export async function createOperation(data: OperationInsert): Promise<void> {
   const query = `
     INSERT INTO ${TABLE} (
@@ -31,9 +23,6 @@ export async function createOperation(data: OperationInsert): Promise<void> {
   ]);
 }
 
-/**
- * Actualiza el estado de una operación (por operation_id / id).
- */
 export async function updateOperationStatus(
   operationId: string,
   status: OperationStatus
@@ -44,9 +33,6 @@ export async function updateOperationStatus(
   );
 }
 
-/**
- * Actualiza métricas y estado final de la operación (COMPLETED o FAILED).
- */
 export async function updateOperationMetrics(
   operationId: string,
   metrics: OperationUpdateMetrics
@@ -66,9 +52,6 @@ export async function updateOperationMetrics(
   ]);
 }
 
-/**
- * Obtiene una operación por id (opcional, para lecturas).
- */
 export async function getOperationById(operationId: string): Promise<{
   id: string;
   created_at: Date;

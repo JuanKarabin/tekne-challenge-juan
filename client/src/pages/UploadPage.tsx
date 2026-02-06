@@ -22,7 +22,6 @@ import ErrorIcon from '@mui/icons-material/Error';
 import { uploadFile } from '../services/api';
 import type { UploadResponse } from '../services/api';
 
-// Mapeo de códigos de error a mensajes descriptivos
 const ERROR_MESSAGES: Record<string, string> = {
   DUPLICATE_POLICY_NUMBER: 'El número de póliza ya existe en la base de datos',
   POLICY_NUMBER_REQUIRED: 'El número de póliza es obligatorio',
@@ -175,7 +174,6 @@ export default function UploadPage() {
         )}
       </Box>
 
-      {/* MODAL CON LOADING Y RESULTADO */}
       <Dialog 
         open={modalOpen} 
         onClose={handleCloseModal}
@@ -210,7 +208,6 @@ export default function UploadPage() {
             </Alert>
           ) : result ? (
             <Box sx={{ mt: 2 }}>
-              {/* Mensaje de éxito/error */}
               <Alert 
                 severity={hasErrors ? 'warning' : 'success'} 
                 icon={hasErrors ? <ErrorIcon /> : <CheckCircleIcon />}
@@ -221,7 +218,6 @@ export default function UploadPage() {
                 </Typography>
               </Alert>
 
-              {/* Operation ID */}
               <Box sx={{ mb: 3 }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Operation ID:
@@ -231,7 +227,6 @@ export default function UploadPage() {
                 </Typography>
               </Box>
 
-              {/* Inserted/Rejected Counts */}
               <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
@@ -251,7 +246,6 @@ export default function UploadPage() {
                 </Box>
               </Box>
 
-              {/* Tabla de Errores */}
               {hasErrors && (
                 <>
                   <Typography variant="h6" sx={{ mb: 2, color: 'error.main' }}>

@@ -1,16 +1,9 @@
-/**
- * Repositorio de pólizas — persistencia en tabla policies (tekne_challenge).
- */
-
 import { pool } from '../db';
 import type { PolicyInput, Policy, PoliciesListResult, PolicySummary } from '../types';
 
 const TABLE = 'policies';
 
-/**
- * Inserta una póliza. policy_number debe ser UNIQUE en DB.
- * @returns id/row count según implementación de la tabla (asumimos created_at en DB).
- */
+
 export async function insertPolicy(policy: PolicyInput): Promise<void> {
   const query = `
     INSERT INTO ${TABLE} (
@@ -37,9 +30,7 @@ export async function insertPolicy(policy: PolicyInput): Promise<void> {
   await pool.query(query, values);
 }
 
-/**
- * Verifica qué policy_numbers ya existen en la base de datos.
- */
+
 export async function checkExistingPolicyNumbers(policyNumbers: string[]): Promise<Set<string>> {
   if (policyNumbers.length === 0) return new Set();
   
@@ -49,10 +40,7 @@ export async function checkExistingPolicyNumbers(policyNumbers: string[]): Promi
   return new Set(result.rows.map((row) => row.policy_number));
 }
 
-/**
- * Inserta varias pólizas en una transacción.
- * Si alguna falla (ej. UNIQUE policy_number), toda la transacción hace rollback.
- */
+
 export async function insertPolicies(policies: PolicyInput[]): Promise<void> {
   if (policies.length === 0) return;
 
@@ -86,9 +74,7 @@ export async function insertPolicies(policies: PolicyInput[]): Promise<void> {
   }
 }
 
-/**
- * Filtros opcionales para listado de pólizas.
- */
+
 export interface GetPoliciesParams {
   limit: number;
   offset: number;
@@ -97,9 +83,7 @@ export interface GetPoliciesParams {
   policy_type?: string;
 }
 
-/**
- * Lista pólizas con paginado y filtros. search hace ILIKE en policy_number y customer.
- */
+
 export async function getPolicies(params: GetPoliciesParams): Promise<PoliciesListResult> {
   const { limit, offset, search, status, policy_type } = params;
   const conditions: string[] = [];
@@ -142,9 +126,7 @@ export async function getPolicies(params: GetPoliciesParams): Promise<PoliciesLi
   return { items, total };
 }
 
-/**
- * Resumen agregado: total_policies, total_premium_usd, count_by_status, count_by_type, premium_by_type.
- */
+
 export async function getPolicySummary(): Promise<PolicySummary> {
   const [countResult, sumResult, statusResult, countByTypeResult, typeResult] = await Promise.all([
     pool.query<{ total_policies: string }>(`SELECT COUNT(*) AS total_policies FROM ${TABLE}`),

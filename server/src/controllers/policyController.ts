@@ -1,17 +1,9 @@
-/**
- * GET /policies y GET /policies/summary — consulta de pólizas.
- */
-
 import { Request, Response } from 'express';
 import { getPolicies, getPolicySummary } from '../repositories/policyRepository';
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
 
-/**
- * GET /policies — listado paginado con filtros.
- * Query: limit (default 25, max 100), offset (default 0), q, status, policy_type.
- */
 export async function listPolicies(req: Request, res: Response): Promise<void> {
   try {
     let limit = parseInt(String(req.query.limit ?? DEFAULT_LIMIT), 10) || DEFAULT_LIMIT;
@@ -47,9 +39,6 @@ export async function listPolicies(req: Request, res: Response): Promise<void> {
   }
 }
 
-/**
- * GET /policies/summary — resumen agregado.
- */
 export async function getSummary(req: Request, res: Response): Promise<void> {
   try {
     const summary = await getPolicySummary();

@@ -1,8 +1,3 @@
-/**
- * POST /upload — Recibe CSV, valida filas, persiste válidas y registra operación.
- * Logs estructurados: correlation_id, operation_id, endpoint, duration_ms, inserted/rejected.
- */
-
 import { Request, Response } from 'express';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
@@ -12,7 +7,6 @@ import { insertPolicies, checkExistingPolicyNumbers } from '../repositories/poli
 import { createDefaultPolicyValidator } from '../domain/rules';
 import type { PolicyInput, PolicyStatus } from '../types';
 
-/** Log estructurado para observabilidad (correlation_id, operation_id, endpoint, duration_ms, inserted/rejected). */
 function logUploadStructured(
   level: 'info' | 'error',
   payload: {
@@ -33,7 +27,6 @@ function logUploadStructured(
 
 const VALID_STATUSES: PolicyStatus[] = ['active', 'expired', 'cancelled'];
 
-/** Códigos de error para validaciones técnicas. */
 const CODES = {
   POLICY_NUMBER_REQUIRED: 'POLICY_NUMBER_REQUIRED',
   INVALID_DATE_RANGE: 'INVALID_DATE_RANGE',
@@ -57,9 +50,6 @@ export interface UploadResponse {
   errors: Array<{ row_number: number; field: string; code: string; message: string }>;
 }
 
-/**
- * Parsea un buffer CSV a filas (objetos con claves del header).
- */
 function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const rows: Record<string, string>[] = [];
@@ -76,10 +66,6 @@ function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
   });
 }
 
-/**
- * Normaliza y valida una fila cruda del CSV.
- * Devuelve { policy, technicalErrors }. Si technicalErrors.length > 0, no usar policy.
- */
 type UploadRowErrorItem = { row_number: number; field: string; code: string; message: string };
 
 function normalizeAndValidateTechnical(
@@ -156,10 +142,6 @@ function normalizeAndValidateTechnical(
   return { policy, technicalErrors: [] };
 }
 
-/**
- * POST /upload — handler.
- * Expecta multer con campo 'file' (o el nombre que se use en la ruta).
- */
 export async function handleUpload(req: Request, res: Response): Promise<void> {
   const startTime = Date.now();
   const correlationId = (req.headers['x-correlation-id'] as string)?.trim() || uuidv4();
@@ -269,7 +251,6 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
   try {
     const rows = await parseCsvBuffer(buffer);
     
-    // Primera pasada: validar todas las filas (polimorfismo: validator no conoce las reglas concretas)
     for (let i = 0; i < rows.length; i++) {
       const rowNumber = i + 1;
       const raw = rows[i];
@@ -296,12 +277,10 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // Verificar duplicados antes de insertar
     if (validPolicies.length > 0) {
       const policyNumbers = validPolicies.map(p => p.policy_number);
       const existingNumbers = await checkExistingPolicyNumbers(policyNumbers);
       
-      // Crear un mapa de policy_number a row_number para encontrar fácilmente la fila original
       const policyToRowNumber = new Map<string, number>();
       for (let i = 0; i < rows.length; i++) {
         const rowNumber = i + 1;
@@ -312,7 +291,6 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
         }
       }
       
-      // Filtrar políticas duplicadas y agregarlas como errores
       const policiesToInsert: PolicyInput[] = [];
       for (const policy of validPolicies) {
         if (existingNumbers.has(policy.policy_number)) {
@@ -328,7 +306,6 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
         }
       }
 
-      // Insertar solo las políticas no duplicadas
       if (policiesToInsert.length > 0) {
         await insertPolicies(policiesToInsert);
       }
@@ -365,12 +342,9 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
     const durationMs = Date.now() - startTime;
     const message = err instanceof Error ? err.message : String(err);
     
-    // Detectar errores de duplicado de PostgreSQL
     const isDuplicateError = message.includes('duplicate key') || message.includes('unique constraint') || message.includes('policies_pkey');
     
     if (isDuplicateError) {
-      // Si es un error de duplicado, tratarlo como un error de validación (200 con errores)
-      // Esto no debería pasar si verificamos antes, pero por si acaso
       await updateOperationMetrics(operationId, {
         status: 'COMPLETED',
         rows_inserted: 0,
@@ -404,7 +378,6 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
         ],
       });
     } else {
-      // Otros errores son errores del servidor
       await updateOperationMetrics(operationId, {
         status: 'FAILED',
         rows_inserted: 0,

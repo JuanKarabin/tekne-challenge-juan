@@ -1,7 +1,3 @@
-/**
- * POST /ai/insights — genera insights de IA a partir del resumen de pólizas.
- */
-
 import { Request, Response } from 'express';
 import { getPolicySummary, getPolicies } from '../repositories/policyRepository';
 import { generateInsights } from '../services/aiService';
@@ -24,9 +20,6 @@ export interface InsightsResponse {
   };
 }
 
-/**
- * Calcula el número de risk flags basado en los datos reales.
- */
 function calculateRiskFlags(summary: PolicySummary, policiesData?: any[]): number {
   let flags = 0;
   
@@ -78,22 +71,17 @@ function calculateRiskFlags(summary: PolicySummary, policiesData?: any[]): numbe
   return flags;
 }
 
-/**
- * POST /ai/insights — obtiene resumen real, opcionalmente filtra policies, llama a la IA y combina respuesta.
- */
 export async function getInsights(req: Request, res: Response): Promise<void> {
   try {
     const body = req.body as InsightsRequest;
     const filters = body.filters;
     
-    // Obtener resumen completo
     const summary: PolicySummary = await getPolicySummary();
     
-    // Si hay filtros, obtener policies filtradas para análisis más preciso
     let policiesData: any[] | undefined;
     if (filters && (filters.status || filters.policy_type || filters.q)) {
       const policiesResult = await getPolicies({
-        limit: 100, // Obtener hasta 100 para análisis
+        limit: 100,
         offset: 0,
         status: filters.status,
         policy_type: filters.policy_type,
@@ -101,7 +89,6 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
       });
       policiesData = policiesResult.items;
     } else {
-      // Sin filtros, obtener una muestra para análisis
       const policiesResult = await getPolicies({
         limit: 100,
         offset: 0,
@@ -109,7 +96,6 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
       policiesData = policiesResult.items;
     }
     
-    // Generar insights con IA
     const aiResult = await generateInsights(
       summary as unknown as Record<string, unknown>,
       policiesData,
@@ -120,7 +106,6 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
       throw new Error('No se pudo generar insights');
     }
 
-    // Calcular risk flags basado en datos reales
     const riskFlags = calculateRiskFlags(summary, policiesData);
 
     const response: InsightsResponse = {
@@ -137,7 +122,6 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     console.error('getInsights error:', err);
     
-    // Fallback con datos básicos
     try {
       const summary: PolicySummary = await getPolicySummary();
       const riskFlags = calculateRiskFlags(summary);

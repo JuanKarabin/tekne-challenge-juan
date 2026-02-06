@@ -1,7 +1,3 @@
-/**
- * Servicio de IA — Soporta OpenAI (ChatGPT) y Google Gemini para generar insights.
- */
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface AiInsightsResponse {
@@ -14,9 +10,6 @@ type AiProvider = 'openai' | 'gemini';
 const GEMINI_MODEL_ID = 'gemini-1.5-flash';
 const OPENAI_MODEL_ID = 'gpt-4o-mini';
 
-/**
- * Detecta qué proveedor de IA está disponible basado en las variables de entorno.
- */
 function getAvailableProvider(): AiProvider | null {
   if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()) {
     return 'openai';
@@ -33,9 +26,7 @@ function getGeminiClient(): GoogleGenerativeAI | null {
   return new GoogleGenerativeAI(apiKey.trim());
 }
 
-/**
- * Analiza los datos y calcula métricas de riesgo antes de enviarlos a la IA.
- */
+
 interface RiskAnalysis {
   totalPolicies: number;
   totalPremium: number;
@@ -57,7 +48,6 @@ function analyzeRisks(summaryData: Record<string, unknown>, policiesData?: any[]
   const concentrationRisk: string[] = [];
   let nearMinimum = 0;
   
-  // Análisis de concentración por tipo
   const typeCounts: Record<string, number> = {};
   if (policiesData) {
     policiesData.forEach(p => {
@@ -72,7 +62,6 @@ function analyzeRisks(summaryData: Record<string, unknown>, policiesData?: any[]
       }
     });
     
-    // Análisis de valores cerca del mínimo
     const propertyMin = 5000;
     const autoMin = 10000;
     
@@ -93,7 +82,6 @@ function analyzeRisks(summaryData: Record<string, unknown>, policiesData?: any[]
     }
   }
   
-  // Análisis de distribución de status
   const expiredCount = statusDistribution.expired || 0;
   const cancelledCount = statusDistribution.cancelled || 0;
   if (expiredCount + cancelledCount > totalPolicies * 0.3) {
@@ -116,9 +104,6 @@ function analyzeRisks(summaryData: Record<string, unknown>, policiesData?: any[]
   };
 }
 
-/**
- * Construye el prompt alineado con el requerimiento: texto corto (5-10 líneas) con riesgos/anomalías y 2-3 recomendaciones accionables.
- */
 function buildPrompt(summaryData: Record<string, unknown>, riskAnalysis: RiskAnalysis, filters?: Record<string, string>): string {
   const dataStr = JSON.stringify(summaryData, null, 2);
   const filtersStr = filters && Object.keys(filters).length > 0
@@ -163,10 +148,7 @@ const DEFAULT_RECOMMENDATIONS = [
   'Solicitar datos adicionales o revisión manual en casos de anomalías detectadas.',
 ];
 
-/**
- * Parsea la respuesta del modelo y extrae el JSON (tolera markdown alrededor).
- * Garantiza al menos 2 recomendaciones (rellena con genéricas si el modelo devuelve menos).
- */
+
 function parseModelJson(text: string): AiInsightsResponse {
   let raw = text.trim();
   const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -178,7 +160,6 @@ function parseModelJson(text: string): AiInsightsResponse {
   let insights = Array.isArray(parsed.insights) ? parsed.insights : [];
   let recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
 
-  // Garantizar 2-3 recomendaciones: si hay 0 o 1, completar con genéricas
   if (recommendations.length < 2) {
     const extra = DEFAULT_RECOMMENDATIONS.slice(0, 2 - recommendations.length);
     recommendations = [...recommendations, ...extra];
@@ -190,9 +171,6 @@ function parseModelJson(text: string): AiInsightsResponse {
   return { insights, recommendations };
 }
 
-/**
- * Llama a OpenAI API usando fetch (sin dependencia adicional).
- */
 async function callOpenAI(prompt: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
@@ -229,10 +207,7 @@ async function callOpenAI(prompt: string): Promise<string> {
   return data.choices[0]?.message?.content || '';
 }
 
-/**
- * Genera insights y recomendaciones usando OpenAI o Gemini.
- * Si no hay API key o la llamada falla, devuelve insights calculados basados en datos.
- */
+
 export async function generateInsights(
   summaryData: Record<string, unknown>,
   policiesData?: any[],
@@ -245,7 +220,6 @@ export async function generateInsights(
     return generateFallbackInsights(summaryData, policiesData);
   }
 
-  // Analizar riesgos antes de llamar a la IA
   const riskAnalysis = analyzeRisks(summaryData, policiesData);
   const prompt = buildPrompt(summaryData, riskAnalysis, filters);
 
@@ -277,15 +251,11 @@ export async function generateInsights(
     if (err instanceof Error) {
       console.error('[aiService] message:', err.message);
     }
-    // Fallback a insights calculados
     return generateFallbackInsights(summaryData, policiesData);
   }
 }
 
-/**
- * Genera insights basados en análisis de datos cuando la IA no está disponible.
- * Siempre devuelve 2-3 recomendaciones accionables.
- */
+
 function generateFallbackInsights(
   summaryData: Record<string, unknown>,
   policiesData?: any[]
@@ -326,7 +296,6 @@ function generateFallbackInsights(
     recommendations.push('Continuar monitoreando métricas clave regularmente.');
   }
 
-  // Garantizar 2-3 recomendaciones
   if (recommendations.length < 2) {
     recommendations.push('Revisar umbrales de valores asegurados y primas de forma periódica.');
   }

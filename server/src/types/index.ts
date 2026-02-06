@@ -1,14 +1,7 @@
-/**
- * Tipos del dominio y persistencia — alineados con CSV y tablas DB.
- */
-
-// --- Policy (CSV + tabla policies) ---
-
 export type PolicyStatus = 'active' | 'expired' | 'cancelled';
 
 export type PolicyType = 'Property' | 'Auto' | string;
 
-/** DTO de entrada (CSV/API). Sin created_at. */
 export interface PolicyInput {
   policy_number: string;
   customer: string;
@@ -20,12 +13,10 @@ export interface PolicyInput {
   insured_value_usd: number;
 }
 
-/** Entidad persistida en DB (incluye created_at). */
 export interface Policy extends PolicyInput {
   created_at: Date;
 }
 
-/** Fila parseada del CSV antes de validación (valores pueden venir como string). */
 export interface PolicyRow {
   policy_number: string;
   customer: string;
@@ -37,7 +28,6 @@ export interface PolicyRow {
   insured_value_usd: number;
 }
 
-// --- Operation (trazabilidad, tabla operations) ---
 
 export type OperationStatus = 'RECEIVED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -53,7 +43,6 @@ export interface Operation {
   error_summary: string | null;
 }
 
-/** DTO para crear una operación (insert). */
 export interface OperationInsert {
   id: string;
   endpoint: string;
@@ -65,7 +54,6 @@ export interface OperationInsert {
   error_summary?: string | null;
 }
 
-/** Campos actualizables tras procesar el upload. */
 export interface OperationUpdateMetrics {
   status: OperationStatus;
   rows_inserted: number;
@@ -74,7 +62,6 @@ export interface OperationUpdateMetrics {
   error_summary?: string | null;
 }
 
-// --- Errores de reglas de negocio (code, field, message) ---
 
 export interface RuleError {
   code: string;
@@ -82,12 +69,10 @@ export interface RuleError {
   message: string;
 }
 
-/** Error reportado en respuesta de upload (incluye row_number). */
 export interface UploadRowError extends RuleError {
   row_number: number;
 }
 
-// --- API de consulta (GET /policies, GET /policies/summary) ---
 
 export interface PoliciesListResult {
   items: Policy[];

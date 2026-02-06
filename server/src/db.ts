@@ -1,8 +1,3 @@
-/**
- * Configuración y pool de conexión PostgreSQL.
- * Centraliza la conexión para reutilización en repositorios y servicios.
- */
-
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 

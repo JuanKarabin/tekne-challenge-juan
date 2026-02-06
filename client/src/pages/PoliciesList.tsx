@@ -29,7 +29,6 @@ import {
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import SearchIcon from "@mui/icons-material/Search";
 
-// SOLUCIÓN: Separamos las funciones de los TIPOS
 import { getPolicies, getAiInsights } from "../services/api";
 import type { Policy, AiInsightsResponse } from "../services/api";
 
@@ -52,12 +51,10 @@ export default function PoliciesList() {
   const [offset, setOffset] = useState(0);
   const limit = 25;
   
-  // Filtros
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [policyTypeFilter, setPolicyTypeFilter] = useState('');
   
-  // Estados para IA
   const [openAi, setOpenAi] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiData, setAiData] = useState<AiInsightsResponse | null>(null);
@@ -84,7 +81,6 @@ export default function PoliciesList() {
     
     getPolicies(params)
       .then((res: any) => {
-        // SOLUCIÓN: Manejo seguro de la respuesta (data.items o items directo)
         const payload = res.data ? res.data : res;
         setPolicies(payload.items || []);
         setTotal(payload.pagination?.total || 0);
@@ -94,17 +90,17 @@ export default function PoliciesList() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setOffset(0); // Reset offset when searching
+    setOffset(0);
   };
 
   const handleStatusChange = (e: any) => {
     setStatusFilter(e.target.value);
-    setOffset(0); // Reset offset when filtering
+    setOffset(0);
   };
 
   const handlePolicyTypeChange = (e: any) => {
     setPolicyTypeFilter(e.target.value);
-    setOffset(0); // Reset offset when filtering
+    setOffset(0);
   };
 
   const handlePrevPage = () => {
@@ -124,7 +120,6 @@ export default function PoliciesList() {
     setAiData(null);
     try {
       const res: any = await getAiInsights();
-      // SOLUCIÓN: Manejo seguro de la respuesta
       const payload = res.data ? res.data : res;
       setAiData(payload);
     } catch (error) {
@@ -153,7 +148,6 @@ export default function PoliciesList() {
         </Button>
       </Box>
 
-      {/* Filtros */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <Box sx={{ flex: '1 1 300px', minWidth: '200px' }}>
@@ -263,7 +257,6 @@ export default function PoliciesList() {
         </Button>
       </Box>
 
-      {/* Modal de IA */}
       <Dialog open={openAi} onClose={() => setOpenAi(false)} fullWidth maxWidth="sm">
         <DialogTitle>✨ AI Risk Analysis</DialogTitle>
         <DialogContent dividers>
@@ -286,7 +279,6 @@ export default function PoliciesList() {
                         </ListItem>
                     ))}
                 </List>
-                 {/* Si existe array de recommendations, mostrarlo */}
                  {(aiData as any).recommendations && (
                     <>
                       <Typography variant="h6" gutterBottom mt={2}>Recomendaciones</Typography>

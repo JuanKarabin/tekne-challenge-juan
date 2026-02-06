@@ -44,7 +44,6 @@ app.post('/ai/insights', (req, res, next) => {
   void getInsights(req, res).catch(next);
 });
 
-// Iniciar servidor
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
 });

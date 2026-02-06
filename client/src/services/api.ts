@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-// --- TIPOS (INTERFACES) ---
-
 export interface Policy {
   policy_number: string;
   customer: string;
@@ -31,7 +29,6 @@ export interface GetPoliciesParams {
   policy_type?: string;
 }
 
-/** Respuesta de GET /policies/summary (alineada con el servidor). */
 export interface PolicySummary {
   total_policies: number;
   total_premium_usd: number;
@@ -49,17 +46,16 @@ export interface UploadResponse {
 
 export interface AiInsightsResponse {
   insights: string[];
-  recommendations?: string[]; // Opcional por si el backend lo manda separado
+  recommendations?: string[];
   highlights: {
     total_policies: number;
     risk_flags: number;
   };
 }
 
-// --- CLIENTE API ---
 
 const api = axios.create({
-  baseURL: '/api', // El proxy de Vite redirige esto a localhost:3000
+  baseURL: '/api',
 });
 
 export const uploadFile = async (file: File): Promise<UploadResponse> => {
@@ -71,11 +67,9 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
     });
     return response.data;
   } catch (error: any) {
-    // Si la respuesta tiene datos (incluso con errores), devolverlos
     if (error.response?.data) {
-      // Si tiene estructura de UploadResponse, devolverla
       if (error.response.data.operation_id !== undefined) {
-        throw error; // Re-lanzar para que el componente maneje el resultado
+        throw error;
       }
     }
     throw error;
