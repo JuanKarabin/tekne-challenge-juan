@@ -1,24 +1,32 @@
-# DECISIONS.md
+# Decisiones de Diseño
 
-Decisiones de diseño principales del proyecto Tekne Challenge.
+Este documento resume las decisiones técnicas tomadas durante el desarrollo, basadas en la investigación de buenas prácticas para este tipo de desafíos.
 
 ---
 
-- **OOP (motor de reglas):** Se usa una clase base abstracta `BusinessRule` y reglas concretas (`PropertyMinInsuredValueRule`, `AutoMinInsuredValueRule`). El `PolicyValidator` recibe una lista de reglas y las ejecuta sin saber qué regla es cada una (polimorfismo). Para añadir una regla nueva solo hace falta crear una nueva clase que extienda `BusinessRule`; no se toca el validador ni el flujo de upload.
+### 1. Diseño Orientado a Objetos (Motor de Reglas)
+Decidí implementar un patrón de estrategia simple para las validaciones.
+* **Por qué:** Quería evitar un código lleno de `if/else` anidados dentro del controlador.
+* **Cómo:** Creé una clase base `BusinessRule`. Cada regla nueva (ej: "Mínimo valor asegurado") es una clase separada que extiende de ella.
+* **Beneficio:** Si mañana el negocio pide una regla nueva, solo creo un archivo nuevo sin tocar la lógica principal de la validación. Esto hace el sistema más mantenible y testear cada regla por separado es trivial.
 
-- **Paginado (UI):** Se usa `limit` (por defecto 25, máximo 100) y `offset` para no traer todas las filas de una vez. Los botones Next/Prev cambian el `offset` y vuelven a pedir datos a la API. Es la forma más simple y encaja con el tamaño de datos que manejamos.
+### 2. Paginación en la UI
+Opté por **Offset/Limit**.
+* **Por qué:** Es el estándar más sencillo de implementar y suficiente para volúmenes de datos moderados.
+* **Funcionamiento:** El frontend pide "dame 25 filas a partir de la 0", luego "25 a partir de la 25".
+* **Trade-off:** Sé que para millones de registros este método puede volverse lento (la base de datos tiene que "saltar" muchas filas). En ese caso, cambiaría a una paginación por *Cursor* (basada en el ID del último elemento), pero para este alcance, Offset/Limit ofrece la mejor relación costo-beneficio.
 
-- **Duplicados e idempotencia:**  
-  - **Duplicados:** En la base de datos `policy_number` es UNIQUE. Antes de insertar, se consulta qué números ya existen y las filas duplicadas se rechazan y se devuelven en la respuesta como error.  
-  - **Idempotencia (opcional):** Si el usuario envía dos veces el mismo upload (por ejemplo doble clic o reintento por red), se podría evitar procesar dos veces lo mismo. Para eso: el cliente envía el header `x-correlation-id` (por ejemplo un mismo ID en ambos envíos). En el servidor, antes de procesar el CSV, se buscaría en la tabla `operations` si ya existe una operación con ese `correlation_id` y estado COMPLETED. Si existe, en lugar de validar e insertar de nuevo, se devolvería la misma respuesta que ya guardamos (mismo `operation_id`, mismos inserted/rejected, mismos errores). Así el usuario recibe siempre la misma respuesta y no se duplica trabajo ni datos.
+### 3. Manejo de Duplicados e Idempotencia
+Para garantizar la integridad de los datos:
+* **Duplicados:** La base de datos impone la restricción `UNIQUE` en `policy_number`. El backend captura el error de violación de restricción y lo devuelve como un mensaje claro al usuario.
+* **Idempotencia (Investigación):** Para evitar procesar el mismo archivo dos veces (ej: doble click erróneo), implementé el uso de un `correlation_id` y una tabla de `operations`. Antes de procesar, consultamos si esa operación ya fue completada exitosamente. Si es así, devolvemos el resultado guardado sin re-procesar.
 
-- **Escalabilidad (cómo crecer si hay más uso):**  
-  - **Backend sin estado (stateless):** El servidor no guarda en memoria nada que dependa de la “sesión” del usuario. Cada petición se responde con lo que viene en la request y lo que está en la base de datos. Eso permite tener **varias copias** del mismo backend corriendo; da igual qué copia atienda cada petición.  
-  - **Load balancer:** Un servicio que reparte las peticiones entre esas varias copias del backend. Cuando llega una petición, el balanceador la manda a una de las instancias que esté menos cargada.  
-  - **Base de datos:** Si la base se vuelve cuello de botella, se puede subir el **tier** del PostgreSQL (plan más potente: más CPU, RAM, disco). O usar **réplicas de solo lectura (read replicas):** copias de la base que solo sirven lecturas; las consultas GET se reparten entre la base principal y las réplicas para no saturar la principal.  
-  - **Upload y archivos grandes:** Hoy el CSV se carga **en memoria** entero: el servidor lee el archivo completo en RAM y luego lo procesa. Si el archivo es muy grande, puede faltar memoria. Dos alternativas que se suelen usar: **(1) Streaming:** ir leyendo el archivo por trozos y procesando cada trozo sin cargar todo a la vez; **(2) Cola + worker:** el upload solo recibe el archivo, lo guarda (por ejemplo en un almacenamiento o en una cola) y responde “recibido”. Un proceso aparte (worker) va tomando archivos de la cola y los procesa. El usuario no espera al procesamiento y el servidor no se bloquea con archivos pesados.
+### 4. Estrategia de Escalabilidad
+Si la aplicación tuviera que manejar miles de usuarios concurrentes:
+* **Backend Stateless:** La aplicación no guarda estado en memoria. Esto permite escalar horizontalmente (poner 10 copias del backend detrás de un balanceador de carga) sin problemas.
+* **Lecturas vs Escrituras:** Podríamos usar "Read Replicas" en PostgreSQL. Una base maestra solo para escribir (Uploads) y varias réplicas solo para leer (Dashboard/Listados), aliviando la carga.
 
-- **Tradeoffs:**  
-  - **Reglas en código (no en base de datos):** Cambiar una regla implica cambiar código y volver a desplegar. A cambio, tenemos tipos en TypeScript y podemos testear las reglas fácilmente.  
-  - **Paginado por offset:** Con tablas muy grandes, usar `OFFSET` grande (por ejemplo “dame desde la fila 1 000 000”) puede ser lento porque la base tiene que “contar” hasta ahí. Para millones de filas se suele usar **paginado por cursor/keyset** (“dame las siguientes después del id X”), que escala mejor.  
-  - **Logs en JSON a consola:** El servidor escribe cada log como una línea en formato JSON (con `correlation_id`, `operation_id`, `duration_ms`, etc.). Herramientas como Azure Application Insights pueden leer esas líneas desde la consola sin necesidad de instalar un SDK específico en la aplicación.
+### 5. Trade-offs (Compromisos asumidos)
+* **Validación Síncrona:** Actualmente, el archivo se procesa en el momento (el usuario espera con el spinner). Si el archivo fuera de 1GB, esto fallaría por *timeout*.
+    * *Mejora futura:* Implementar procesamiento asíncrono (subir archivo -> devolver "OK, procesando" -> procesar en segundo plano -> notificar al usuario).
+* **API Keys en Backend:** Por simplicidad, el backend llama directamente a la IA. En una arquitectura más compleja, quizás movería esto a un microservicio dedicado para aislar costos y cuotas.

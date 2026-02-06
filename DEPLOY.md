@@ -1,71 +1,45 @@
-# DEPLOY.md — Cómo desplegar en Azure (guía básica)
+# Estrategia de Despliegue en Azure
 
-Este documento explica **cómo desplegaría** el proyecto en Azure y **qué es cada pieza** que pide el challenge, de forma sencilla.
-
----
-
-## 1. Dónde corre el backend: Azure Functions o App Service
-
-El backend (Node.js + Express) tiene que estar en un servicio que reciba peticiones HTTP y ejecute nuestro código.
-
-- **Azure Functions (preferido aquí):**  
-  Es un servicio donde **subes tu código** y Azure **lo ejecuta cuando llega una petición** (por ejemplo una llamada a `POST /upload` o `GET /policies`). No tienes un “servidor encendido 24 horas”; pagas por cada ejecución. Azure se encarga de escalar: si hay muchas peticiones, lanza más ejecuciones. Para este proyecto es cómodo porque el tráfico puede ser irregular (pocos o muchos uploads al día).
-
-- **App Service (alternativa):**  
-  Es como **un servidor virtual** donde tu aplicación Node corre **todo el tiempo**. Creas un “App Service”, subes el código del backend y Azure lo mantiene encendido. Cualquier petición que llegue a la URL del App Service la atiende tu app. Es el modelo más parecido a “tengo un servidor con Node”. Si prefieres no usar Functions, App Service es la opción más directa.
-
-**Resumen:** Elegiría **Azure Functions** para ahorro y escalado automático, o **App Service** si quiero “un servidor fijo” que siempre está corriendo.
+Como parte del desafío, investigué cómo llevar esta solución local a un entorno productivo en la nube de Microsoft Azure. A continuación, detallo la arquitectura propuesta y el rol de cada componente.
 
 ---
 
-## 2. Dónde guardar secretos: Key Vault
+## 1. Backend: Azure Functions (Compute)
+Para ejecutar la API Node.js, evalué dos opciones principales: **App Service** (servidor tradicional) y **Azure Functions** (serverless).
 
-Las **contraseñas y claves** (cadena de conexión a la base de datos, API keys de OpenAI o Google) no deben estar escritas en el código ni en archivos subidos al repositorio.
+**Mi elección: Azure Functions.**
+* **Por qué:** Al ser un proyecto con tráfico variable (cargas de archivos puntuales), el modelo *serverless* es más eficiente. Solo consumimos recursos cuando realmente se procesa un archivo o se consulta la API.
+* **Escalado:** Si recibimos 100 archivos CSV simultáneamente, Azure levanta automáticamente múltiples instancias de la función para procesarlos en paralelo, sin que yo tenga que configurar servidores adicionales.
 
-- **Azure Key Vault** es un servicio que actúa como **caja fuerte**: guardas ahí los secretos (por ejemplo “connection-string-postgres” o “OPENAI_API_KEY”). La aplicación, cuando corre en Azure, **pide el valor al Key Vault** en lugar de leerlo de un archivo `.env` en el servidor. Así los secretos no aparecen en la configuración visible de la app; solo la app tiene permiso para leerlos (usando la identidad gestionada de Azure).  
-- En local seguimos usando `.env`; en Azure no se sube `.env` y todo lo sensible va al Key Vault y se inyecta como variables de entorno que apuntan al Key Vault.
+## 2. Seguridad: Azure Key Vault (Secretos)
+Actualmente, las credenciales (DB password, API Keys de IA) están en un archivo `.env` local. Esto es inseguro para producción.
 
----
+**Solución:**
+* Utilizaría **Azure Key Vault** para almacenar estos valores cifrados.
+* La aplicación (Azure Function) se conectaría usando una *Managed Identity* (identidad gestionada) de Azure.
+* **Ventaja:** El código nunca "toca" las contraseñas reales, solo solicita acceso a ellas en tiempo de ejecución. Eliminamos el riesgo de filtrar credenciales en el repositorio.
 
-## 3. Logs y métricas: Application Insights
+## 3. Base de Datos: Azure Database for PostgreSQL
+En lugar de instalar y mantener PostgreSQL en una máquina virtual (lo cual requiere gestionar parches, backups y seguridad manual), optaría por el servicio gestionado (**PaaS**).
 
-Necesitamos ver qué pasa en producción (errores, lentitud, cuántas peticiones hay).
+**Ventaja:**
+* Alta disponibilidad automática.
+* Backups automáticos configurables.
+* Me permite centrarme en el esquema de datos y no en la administración del servidor de base de datos.
 
-- **Application Insights** es el servicio de Azure para **observabilidad**: recoge **logs** (lo que escribe tu app, por ejemplo nuestros JSON con `correlation_id`, `operation_id`, `duration_ms`) y **métricas** (cuántas peticiones por segundo, cuánto tarda cada endpoint, tasa de errores). Lo vinculas a tu Function App o App Service y, sin cambiar mucho el código, Azure empieza a capturar lo que la app escribe en la consola y a mostrarlo en un panel. Así puedes revisar problemas o rendimiento sin “entrar” al servidor.  
-- Los logs estructurados que ya tenemos (JSON con correlation_id, operation_id, endpoint, duration_ms, inserted/rejected) son justo lo que App Insights puede usar para filtrar y hacer gráficos.
+## 4. Observabilidad: Azure Application Insights
+Para monitorear la salud de la aplicación sin acceder a los servidores, conectaría la Azure Function con **Application Insights**.
 
----
+**Qué nos aporta:**
+* **Logs centralizados:** Aprovechando que mi aplicación ya genera logs estructurados (JSON), App Insights puede indexarlos automáticamente.
+* **Trazabilidad:** Podría buscar por `correlation_id` y ver todo el recorrido de una petición, desde que entra hasta que se guarda en la DB.
+* **Alertas:** Configurar avisos si la tasa de rechazo de pólizas supera cierto umbral o si el tiempo de respuesta aumenta.
 
-## 4. Base de datos: PostgreSQL administrado
+## 5. Automatización: CI/CD (High-Level)
+Para evitar despliegues manuales propensos a error, implementaría un pipeline de CI/CD (por ejemplo, con GitHub Actions o Azure DevOps).
 
-La app usa PostgreSQL. En producción no pondríamos un PostgreSQL instalado a mano en una máquina; usaríamos un servicio gestionado.
-
-- **Azure Database for PostgreSQL** es **PostgreSQL administrado por Azure**: Azure se encarga de instalación, backups, actualizaciones y mantenimiento. Tú creas un “servidor” de PostgreSQL en Azure, creas la base de datos (por ejemplo `tekne_challenge`), ejecutas nuestro script `server/scripts/init_db.sql` para crear las tablas `policies` y `operations`, y desde el backend te conectas con la **connection string** que te da Azure. Esa connection string es un secreto y se guarda en Key Vault; la app la lee desde ahí al arrancar.
-
----
-
-## 5. CI/CD (automatización del despliegue)
-
-**CI/CD** significa: en lugar de desplegar a mano cada vez que cambias código, un **pipeline** lo hace automáticamente.
-
-- **Flujo típico:**  
-  1. Subes código a un repositorio (por ejemplo GitHub).  
-  2. Un **pipeline** (por ejemplo GitHub Actions o Azure DevOps) se dispara al hacer push (o al merge a `main`).  
-  3. El pipeline: instala dependencias, ejecuta tests, hace el build del backend y del frontend.  
-  4. Si todo va bien, **despliega** el backend a Azure (Functions o App Service) y el frontend donde corresponda (por ejemplo Azure Static Web Apps o el mismo App Service).  
-- Los **secretos** (connection string, API keys) no se ponen en el pipeline en texto plano; el pipeline solo configura la app para que use Key Vault o variables que ya están en Azure.  
-- Se suele tener al menos dos entornos: **staging** (pruebas) y **production**; el pipeline despliega a staging en cada cambio y a producción con un paso extra (aprobación manual o al hacer un release).
-
-**Resumen:** CI/CD = “al subir código, se prueba, se construye y se despliega solo”, sin ejecutar comandos a mano en el servidor.
-
----
-
-## Resumen: qué es cada cosa
-
-| Qué pide el challenge | Qué es en términos simples |
-|------------------------|----------------------------|
-| **Azure Functions o App Service** | Donde corre el backend: Functions = se ejecuta por petición; App Service = servidor siempre encendido. |
-| **Secrets en Key Vault** | Caja fuerte en la nube donde guardas connection string y API keys; la app los lee desde ahí. |
-| **App Insights** | Servicio que recoge logs y métricas de la app para ver errores, lentitud y uso en producción. |
-| **PostgreSQL managed** | Base de datos PostgreSQL que Azure administra (backups, actualizaciones); tú solo la usas con una connection string. |
-| **CI/CD high-level** | Pipeline que, al subir código, hace build, tests y despliega a Azure de forma automática. |
+**El flujo sería:**
+1.  **Commit:** Al subir código a la rama `main`.
+2.  **Build & Test:** El pipeline instala dependencias y corre los tests unitarios.
+3.  **Deploy:** Si los tests pasan, el pipeline despliega el código nuevo a la Azure Function.
+    * *Nota:* Las migraciones de base de datos también podrían ejecutarse en este paso o mediante un job separado.
