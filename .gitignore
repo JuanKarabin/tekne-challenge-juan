@@ -1,0 +1,41 @@
+# Dependencies (Monorepo: root + workspaces)
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment — no subir variables de entorno
+.env
+.env.local
+.env.*.local
+server/.env
+client/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Vite
+*.local
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
