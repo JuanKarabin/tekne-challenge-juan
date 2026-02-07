@@ -1,7 +1,7 @@
--- Habilitar extensión para generar UUIDs
+-- Enable extension to generate UUIDs
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Tabla de Operaciones (Uploads)
+-- Operations table (Uploads)
 CREATE TABLE operations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     operation_id UUID NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE operations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de Pólizas (Policies)
+-- Table of Policies (Policies)
 CREATE TABLE policies (
     policy_number VARCHAR(50) PRIMARY KEY,
     customer VARCHAR(100),
