@@ -23,13 +23,13 @@ import { uploadFile } from '../services/api';
 import type { UploadResponse } from '../services/api';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  DUPLICATE_POLICY_NUMBER: 'El número de póliza ya existe en la base de datos',
-  POLICY_NUMBER_REQUIRED: 'El número de póliza es obligatorio',
-  INVALID_DATE_RANGE: 'La fecha de inicio debe ser anterior a la fecha de fin',
-  INVALID_STATUS: 'El estado debe ser: active, expired o cancelled',
-  PROPERTY_VALUE_TOO_LOW: 'El valor asegurado para Property debe ser al menos $5,000',
-  AUTO_VALUE_TOO_LOW: 'El valor asegurado para Auto debe ser al menos $10,000',
-  INVALID_NUMBER: 'Los valores numéricos no son válidos',
+  DUPLICATE_POLICY_NUMBER: 'Policy number already exists in the database',
+  POLICY_NUMBER_REQUIRED: 'Policy number is required',
+  INVALID_DATE_RANGE: 'Start date must be before end date',
+  INVALID_STATUS: 'Status must be: active, expired, or cancelled',
+  PROPERTY_VALUE_TOO_LOW: 'Property insured value must be at least $5,000',
+  AUTO_VALUE_TOO_LOW: 'Auto insured value must be at least $10,000',
+  INVALID_NUMBER: 'Numeric values are not valid',
 };
 
 export default function UploadPage() {
@@ -59,7 +59,7 @@ export default function UploadPage() {
         setResult(res);
       })
       .catch((err) => {
-        let errorMessage = 'Error al procesar el archivo';
+        let errorMessage = 'Error processing file';
         if (err.response?.data) {
           const data = err.response.data;
           if (data.errors && Array.isArray(data.errors)) {
@@ -75,7 +75,7 @@ export default function UploadPage() {
           else if (data.message) errorMessage = data.message;
         } else if (err.message) {
           if (err.message.includes('Network Error') || err.message.includes('timeout')) {
-            errorMessage = 'Error de conexión. Verifica tu conexión e intenta de nuevo.';
+            errorMessage = 'Connection error. Please check your connection and try again.';
           } else {
             errorMessage = err.message;
           }
@@ -111,7 +111,7 @@ export default function UploadPage() {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Typography variant="body2" color="text.secondary">
-          Selector de archivo CSV
+          CSV File Selector
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
           <Box
@@ -164,7 +164,7 @@ export default function UploadPage() {
               '&:hover': { backgroundColor: '#f5d66a', borderColor: '#e8c96a' },
             }}
           >
-            Limpiar
+            Clear
           </Button>
         </Box>
         {selectedFile && (
@@ -182,7 +182,7 @@ export default function UploadPage() {
         disableEscapeKeyDown={loading}
       >
         <DialogTitle>
-          {loading ? 'Procesando archivo...' : hasSuccess ? 'Proceso completado' : 'Error en el proceso'}
+          {loading ? 'Processing file...' : hasSuccess ? 'Process completed' : 'Process error'}
         </DialogTitle>
         <DialogContent>
           {loading ? (
@@ -191,19 +191,19 @@ export default function UploadPage() {
                 <LinearProgress />
               </Box>
               <Typography variant="body2" align="center" color="text.secondary">
-                Validando reglas de negocio e insertando datos.
+                Validating business rules and inserting data.
               </Typography>
             </>
           ) : error ? (
             <Alert severity="error" sx={{ mt: 2 }}>
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Error al procesar el archivo
+                Error processing file
               </Typography>
               <Typography variant="body2">
                 {error}
               </Typography>
               <Typography variant="body2" sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
-                Por favor, verifica el archivo e intenta nuevamente.
+                Please check the file and try again.
               </Typography>
             </Alert>
           ) : result ? (
@@ -214,7 +214,7 @@ export default function UploadPage() {
                 sx={{ mb: 3 }}
               >
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  {hasErrors ? 'Proceso completado con errores' : 'Proceso finalizado con éxito'}
+                  {hasErrors ? 'Process completed with errors' : 'Process completed successfully'}
                 </Typography>
               </Alert>
 
@@ -230,7 +230,7 @@ export default function UploadPage() {
               <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
-                    Insertadas:
+                    Inserted:
                   </Typography>
                   <Typography variant="h6" color="success.main" fontWeight="bold">
                     {result.inserted_count}
@@ -238,7 +238,7 @@ export default function UploadPage() {
                 </Box>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
-                    Rechazadas:
+                    Rejected:
                   </Typography>
                   <Typography variant="h6" color="error.main" fontWeight="bold">
                     {result.rejected_count}
@@ -249,15 +249,15 @@ export default function UploadPage() {
               {hasErrors && (
                 <>
                   <Typography variant="h6" sx={{ mb: 2, color: 'error.main' }}>
-                    Detalle de Errores por Fila
+                    Row Error Details
                   </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ backgroundColor: '#ffebee' }}>
-                          <TableCell><strong>Fila CSV</strong></TableCell>
-                          <TableCell><strong>Campo</strong></TableCell>
-                          <TableCell><strong>Motivo del Error</strong></TableCell>
+                          <TableCell><strong>CSV Row</strong></TableCell>
+                          <TableCell><strong>Field</strong></TableCell>
+                          <TableCell><strong>Error Reason</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -272,7 +272,7 @@ export default function UploadPage() {
                                 </Typography>
                                 {ERROR_MESSAGES[row.code] && (
                                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                    {ERROR_MESSAGES[row.code]}
+                                      {ERROR_MESSAGES[row.code]}
                                   </Typography>
                                 )}
                               </Box>
@@ -289,7 +289,7 @@ export default function UploadPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseModal} variant="contained" color="secondary">
-            Cerrar
+            Close
           </Button>
         </DialogActions>
       </Dialog>

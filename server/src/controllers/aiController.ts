@@ -103,7 +103,7 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
     );
 
     if (!aiResult) {
-      throw new Error('No se pudo generar insights');
+      throw new Error('Failed to generate insights');
     }
 
     const riskFlags = calculateRiskFlags(summary, policiesData);
@@ -129,12 +129,12 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
       res.status(500).json({
         error: message,
         insights: [
-          'Error al generar insights con IA. Verifica la configuración de OPENAI_API_KEY o GOOGLE_API_KEY.',
-          'Los datos están disponibles pero no se pudieron analizar con IA.',
+          'Error generating insights with AI. Verify the configuration of OPENAI_API_KEY or GOOGLE_API_KEY.',
+          'The data is available but could not be analyzed with AI.',
         ],
         recommendations: [
-          'Revisar configuración de API keys en variables de entorno.',
-          'Verificar conectividad con el proveedor de IA.',
+          'Review API key configuration in environment variables.',
+          'Verify connectivity with the AI provider.',
         ],
         highlights: {
           total_policies: summary.total_policies,
@@ -144,7 +144,7 @@ export async function getInsights(req: Request, res: Response): Promise<void> {
     } catch (fallbackErr) {
       res.status(500).json({
         error: message,
-        insights: ['Error al procesar la solicitud.'],
+        insights: ['Error processing the request.'],
         highlights: {
           total_policies: 0,
           risk_flags: 0,

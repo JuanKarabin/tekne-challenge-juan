@@ -66,11 +66,12 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
-  } catch (error: any) {
-    if (error.response?.data) {
-      if (error.response.data.operation_id !== undefined) {
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.data && (error.response.data as { operation_id?: string }).operation_id !== undefined) {
         throw error;
       }
+      throw error;
     }
     throw error;
   }
@@ -86,7 +87,15 @@ export const getSummary = async (): Promise<PolicySummary> => {
   return response.data;
 };
 
-export const getAiInsights = async (filters?: any): Promise<AiInsightsResponse> => {
+export interface AiInsightsFilters {
+  filters?: {
+    status?: string;
+    policy_type?: string;
+    q?: string;
+  };
+}
+
+export const getAiInsights = async (filters?: AiInsightsFilters): Promise<AiInsightsResponse> => {
   const response = await api.post('/ai/insights', filters || {});
   return response.data;
 };

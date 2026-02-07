@@ -23,17 +23,16 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     getSummary()
-      .then((res: any) => {
+      .then((res: PolicySummary) => {
         if (!cancelled) {
-          const actualData = res.data ? res.data : res;
-          setData(actualData);
+          setData(res);
           setLoading(false);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           console.error(err);
-          setError("Error cargando el resumen.");
+          setError("Error loading summary.");
           setLoading(false);
         }
       });
@@ -158,7 +157,7 @@ export default function Dashboard() {
             </Typography>
             {Object.keys(premiumByType).length === 0 ? (
               <Typography variant="body1" color="text.secondary" sx={{ fontSize: "1rem" }}>
-                No hay datos
+                No data
               </Typography>
             ) : (
               <Box component="ul" sx={{ m: 0, pl: 2.5, mt: 0.5 }}>

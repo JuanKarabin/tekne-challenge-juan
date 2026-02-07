@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -24,13 +24,14 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  type SelectChangeEvent
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import SearchIcon from "@mui/icons-material/Search";
 
 import { getPolicies, getAiInsights } from "../services/api";
-import type { Policy, AiInsightsResponse } from "../services/api";
+import type { Policy, AiInsightsResponse, PoliciesResponse, GetPoliciesParams } from "../services/api";
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -59,12 +60,8 @@ export default function PoliciesList() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiData, setAiData] = useState<AiInsightsResponse | null>(null);
 
-  useEffect(() => {
-    loadPolicies();
-  }, [offset, searchQuery, statusFilter, policyTypeFilter]);
-
-  const loadPolicies = () => {
-    const params: any = {
+  const loadPolicies = useCallback(() => {
+    const params: GetPoliciesParams = {
       limit,
       offset,
     };
@@ -80,26 +77,29 @@ export default function PoliciesList() {
     }
     
     getPolicies(params)
-      .then((res: any) => {
-        const payload = res.data ? res.data : res;
-        setPolicies(payload.items || []);
-        setTotal(payload.pagination?.total || 0);
+      .then((res: PoliciesResponse) => {
+        setPolicies(res.items || []);
+        setTotal(res.pagination?.total || 0);
       })
       .catch(console.error);
-  };
+  }, [limit, offset, searchQuery, statusFilter, policyTypeFilter]);
+
+  useEffect(() => {
+    loadPolicies();
+  }, [loadPolicies]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setOffset(0);
   };
 
-  const handleStatusChange = (e: any) => {
-    setStatusFilter(e.target.value);
+  const handleStatusChange = (e: SelectChangeEvent<string>) => {
+    setStatusFilter(e.target.value as string);
     setOffset(0);
   };
 
-  const handlePolicyTypeChange = (e: any) => {
-    setPolicyTypeFilter(e.target.value);
+  const handlePolicyTypeChange = (e: SelectChangeEvent<string>) => {
+    setPolicyTypeFilter(e.target.value as string);
     setOffset(0);
   };
 
@@ -119,9 +119,8 @@ export default function PoliciesList() {
     setLoadingAi(true);
     setAiData(null);
     try {
-      const res: any = await getAiInsights();
-      const payload = res.data ? res.data : res;
-      setAiData(payload);
+      const res: AiInsightsResponse = await getAiInsights();
+      setAiData(res);
     } catch (error) {
       console.error(error);
     } finally {
@@ -153,14 +152,14 @@ export default function PoliciesList() {
           <Box sx={{ flex: '1 1 300px', minWidth: '200px' }}>
             <TextField
               fullWidth
-              label="Buscar (Policy Number o Customer)"
+              label="Search by Policy Number or Customer"
               variant="outlined"
               value={searchQuery}
               onChange={handleSearchChange}
               InputProps={{
                 startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
-              placeholder="Buscar..."
+              placeholder="Search..."
             />
           </Box>
           <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
@@ -206,7 +205,7 @@ export default function PoliciesList() {
               }}
               sx={{ backgroundColor: '#FEDD81', color: '#1a1a1a', borderColor: '#e8c96a', '&:hover': { backgroundColor: '#f5d66a', borderColor: '#e8c96a' } }}
             >
-              Limpiar
+              Clear
             </Button>
           </Box>
         </Box>
@@ -247,13 +246,13 @@ export default function PoliciesList() {
 
       <Box mt={2} display="flex" justifyContent="center" gap={2} alignItems="center">
         <Button disabled={offset === 0} onClick={handlePrevPage}>
-          Anterior
+          Previous
         </Button>
         <Typography variant="body2">
-          Página {currentPage} de {totalPages} ({total} total)
+          Page {currentPage} of {totalPages} ({total} total)
         </Typography>
         <Button disabled={offset + limit >= total} onClick={handleNextPage}>
-          Siguiente
+          Next
         </Button>
       </Box>
 
@@ -267,8 +266,8 @@ export default function PoliciesList() {
           ) : aiData ? (
             <Box>
                 <Box mb={2}>
-                    <Chip label={`Analizadas: ${aiData.highlights.total_policies}`} sx={{ mr: 1 }} />
-                    <Chip label={`Riesgos: ${aiData.highlights.risk_flags}`} color="error" variant="outlined" />
+                    <Chip label={`Analyzed: ${aiData.highlights.total_policies}`} sx={{ mr: 1 }} />
+                    <Chip label={`Risks: ${aiData.highlights.risk_flags}`} color="error" variant="outlined" />
                 </Box>
                 
                 <Typography variant="h6" gutterBottom>Insights</Typography>
@@ -279,11 +278,11 @@ export default function PoliciesList() {
                         </ListItem>
                     ))}
                 </List>
-                 {(aiData as any).recommendations && (
+                 {aiData.recommendations && (
                     <>
-                      <Typography variant="h6" gutterBottom mt={2}>Recomendaciones</Typography>
+                      <Typography variant="h6" gutterBottom mt={2}>Recommendations</Typography>
                       <List dense>
-                          {(aiData as any).recommendations.map((text: string, i: number) => (
+                          {aiData.recommendations.map((text: string, i: number) => (
                               <ListItem key={i}>
                                   <ListItemText primary={text} />
                               </ListItem>
@@ -293,7 +292,7 @@ export default function PoliciesList() {
                  )}
             </Box>
           ) : (
-            <Alert severity="error">No se pudieron generar insights.</Alert>
+            <Alert severity="error">Failed to generate insights.</Alert>
           )}
         </DialogContent>
         <DialogActions>

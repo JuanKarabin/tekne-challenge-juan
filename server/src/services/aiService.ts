@@ -107,45 +107,45 @@ function analyzeRisks(summaryData: Record<string, unknown>, policiesData?: any[]
 function buildPrompt(summaryData: Record<string, unknown>, riskAnalysis: RiskAnalysis, filters?: Record<string, string>): string {
   const dataStr = JSON.stringify(summaryData, null, 2);
   const filtersStr = filters && Object.keys(filters).length > 0
-    ? ` Filtros aplicados: ${JSON.stringify(filters)}.`
+    ? ` Applied filters: ${JSON.stringify(filters)}.`
     : '';
 
-  return `Actúa como un analista de riesgos de seguros. Basado en estos datos resumidos:
+  return `Act as an insurance risk analyst. Based on this summarized data:
 
 ${dataStr}
 ${filtersStr}
 
-Genera un análisis en formato JSON válido (sin markdown, sin \`\`\`json) con dos campos:
+Generate an analysis in valid JSON format (no markdown, no \`\`\`json) with two fields:
 
-1) "insights": un array de 5 a 10 líneas cortas que describan:
-   - Riesgos y anomalías (ej. muchos rechazos, valores asegurados cerca del mínimo, concentración por tipo de póliza, alta proporción de expiradas/canceladas).
-   - Incluye números y porcentajes cuando sea relevante.
-   - Cada elemento del array puede ser una frase o línea.
+1) "insights": an array of 5 to 10 short lines describing:
+   - Risks and anomalies (e.g., many rejections, insured values near the minimum, concentration by policy type, high share of expired/cancelled).
+   - Include numbers and percentages where relevant.
+   - Each array item can be a sentence or a line.
 
-2) "recommendations": un array con exactamente 2 o 3 recomendaciones accionables (ej. revisar umbrales, pedir más data, implementar alertas, diversificar portafolio, revisión manual cuando insured_value < 1.1x mínimo).
+2) "recommendations": an array with exactly 2 or 3 actionable recommendations (e.g., review thresholds, request more data, implement alerts, diversify the portfolio, manual review when insured_value < 1.1x minimum).
 
-Formato de respuesta (solo este JSON, nada más):
+Response format (only this JSON, nothing else):
 
 {
   "insights": [
-    "Línea 1: riesgo o anomalía detectada",
-    "Línea 2: ...",
-    "Entre 5 y 10 líneas en total"
+    "Line 1: detected risk or anomaly",
+    "Line 2: ...",
+    "Between 5 and 10 lines total"
   ],
   "recommendations": [
-    "Recomendación accionable 1",
-    "Recomendación accionable 2",
-    "Recomendación accionable 3 (obligatorio incluir 2 o 3 recomendaciones)"
+    "Actionable recommendation 1",
+    "Actionable recommendation 2",
+    "Actionable recommendation 3 (must include 2 or 3 recommendations)"
   ]
 }
 
-IMPORTANTE: Debes devolver exactamente 2 o 3 recomendaciones en "recommendations". Sé específico, cuantificado y práctico usando los datos del summary.`;
+IMPORTANT: You must return exactly 2 or 3 recommendations in "recommendations". Be specific, quantified, and practical using the summary data.`;
 }
 
 const DEFAULT_RECOMMENDATIONS = [
-  'Revisar umbrales de valores asegurados y primas de forma periódica.',
-  'Implementar alertas cuando los indicadores se acerquen a los límites definidos.',
-  'Solicitar datos adicionales o revisión manual en casos de anomalías detectadas.',
+  'Review insured value and premium thresholds periodically.',
+  'Implement alerts when indicators approach defined limits.',
+  'Request additional data or manual review when anomalies are detected.',
 ];
 
 
@@ -186,7 +186,7 @@ async function callOpenAI(prompt: string): Promise<string> {
       messages: [
         {
           role: 'system',
-          content: 'Eres un analista de riesgos de seguros experto. Responde solo con JSON válido.',
+          content: 'You are an insurance risk analyst. Respond with valid JSON only.',
         },
         {
           role: 'user',
@@ -216,7 +216,7 @@ export async function generateInsights(
   const provider = getAvailableProvider();
   
   if (!provider) {
-    console.log('[aiService] No hay proveedor de IA disponible (OPENAI_API_KEY o GOOGLE_API_KEY)');
+    console.log('[aiService] No AI provider available (OPENAI_API_KEY or GOOGLE_API_KEY)');
     return generateFallbackInsights(summaryData, policiesData);
   }
 
@@ -247,7 +247,7 @@ export async function generateInsights(
 
     return parseModelJson(responseText);
   } catch (err) {
-    console.error('[aiService] Error al llamar a la API de IA:', err);
+    console.error('[aiService] Error calling AI provider:', err);
     if (err instanceof Error) {
       console.error('[aiService] message:', err.message);
     }
@@ -265,42 +265,42 @@ function generateFallbackInsights(
   const recommendations: string[] = [];
 
   if (riskAnalysis.totalPolicies === 0) {
-    insights.push('No hay pólizas registradas en el sistema.');
-    recommendations.push('Cargar pólizas mediante el endpoint de upload.');
-    recommendations.push('Revisar umbrales y reglas de validación una vez existan datos.');
+    insights.push('No policies are registered in the system.');
+    recommendations.push('Upload policies using the upload endpoint.');
+    recommendations.push('Review thresholds and validation rules once data exists.');
     return { insights, recommendations };
   }
 
   if (riskAnalysis.concentrationRisk.length > 0) {
-    insights.push(`Alta concentración detectada: ${riskAnalysis.concentrationRisk.join(', ')}. Esto puede aumentar el riesgo de exposición.`);
-    recommendations.push('Diversificar el portafolio para reducir la concentración de riesgo.');
+    insights.push(`High concentration detected: ${riskAnalysis.concentrationRisk.join(', ')}. This may increase exposure risk.`);
+    recommendations.push('Diversify the portfolio to reduce concentration risk.');
   }
 
   if (riskAnalysis.policiesNearMinimum > 0) {
     const percentage = ((riskAnalysis.policiesNearMinimum / riskAnalysis.totalPolicies) * 100).toFixed(1);
-    insights.push(`${percentage}% de las pólizas tienen valores asegurados cercanos al mínimo permitido.`);
-    recommendations.push('Implementar alertas cuando insured_value < 1.1x del mínimo para revisión manual.');
+    insights.push(`${percentage}% of policies have insured values close to the minimum allowed.`);
+    recommendations.push('Implement alerts when insured_value < 1.1x the minimum for manual review.');
   }
 
   const expiredCount = riskAnalysis.statusDistribution.expired || 0;
   const cancelledCount = riskAnalysis.statusDistribution.cancelled || 0;
   if (expiredCount + cancelledCount > riskAnalysis.totalPolicies * 0.3) {
     const percentage = (((expiredCount + cancelledCount) / riskAnalysis.totalPolicies) * 100).toFixed(1);
-    insights.push(`${percentage}% de las pólizas están expiradas o canceladas.`);
-    recommendations.push('Revisar estrategias de retención de clientes para pólizas activas.');
+    insights.push(`${percentage}% of policies are expired or cancelled.`);
+    recommendations.push('Review customer retention strategies for active policies.');
   }
 
   if (insights.length === 0) {
-    insights.push(`Portafolio de ${riskAnalysis.totalPolicies} pólizas con prima total de $${riskAnalysis.totalPremium.toLocaleString()}.`);
-    insights.push('Distribución de riesgos parece equilibrada.');
-    recommendations.push('Continuar monitoreando métricas clave regularmente.');
+    insights.push(`Portfolio of ${riskAnalysis.totalPolicies} policies with total premium of $${riskAnalysis.totalPremium.toLocaleString()}.`);
+    insights.push('Risk distribution appears balanced.');
+    recommendations.push('Continue monitoring key metrics regularly.');
   }
 
   if (recommendations.length < 2) {
-    recommendations.push('Revisar umbrales de valores asegurados y primas de forma periódica.');
+    recommendations.push('Review insured value and premium thresholds periodically.');
   }
   if (recommendations.length < 3) {
-    recommendations.push('Establecer alertas cuando los indicadores se acerquen a los límites definidos.');
+    recommendations.push('Set alerts when indicators approach defined limits.');
   }
   if (recommendations.length > 3) {
     recommendations.length = 3;

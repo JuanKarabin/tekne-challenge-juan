@@ -35,11 +35,11 @@ const CODES = {
 } as const;
 
 const TECHNICAL_ERROR_MESSAGES: Record<string, string> = {
-  [CODES.POLICY_NUMBER_REQUIRED]: 'El número de póliza es obligatorio',
-  [CODES.INVALID_DATE_RANGE]: 'La fecha de inicio debe ser anterior a la fecha de fin',
-  [CODES.INVALID_STATUS]: 'El estado debe ser: active, expired o cancelled',
-  [CODES.DUPLICATE_POLICY_NUMBER]: 'El número de póliza ya existe en la base de datos',
-  INVALID_NUMBER: 'Los valores numéricos no son válidos',
+  [CODES.POLICY_NUMBER_REQUIRED]: 'Policy number is required',
+  [CODES.INVALID_DATE_RANGE]: 'Start date must be before end date',
+  [CODES.INVALID_STATUS]: 'Status must be: active, expired, or cancelled',
+  [CODES.DUPLICATE_POLICY_NUMBER]: 'Policy number already exists in the database',
+  INVALID_NUMBER: 'Numeric values are not valid',
 };
 
 export interface UploadResponse {
@@ -402,7 +402,7 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
         inserted_count: 0,
         rejected_count: errors.length,
         errors: errors.map((e) => ({ row_number: e.row_number, field: e.field, code: e.code, message: e.message })),
-        error: 'Error interno del servidor al procesar el archivo',
+        error: 'Internal server error while processing the file',
       });
     }
   }
