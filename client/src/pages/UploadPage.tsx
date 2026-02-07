@@ -42,7 +42,21 @@ export default function UploadPage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    setSelectedFile(file || null);
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    // Frontend guard: only allow .csv selection
+    if (!/\.csv$/i.test(file.name)) {
+      setSelectedFile(null);
+      setResult(null);
+      setError('Invalid file type. Please select a .csv file.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
     setError(null);
     setResult(null);
   };
@@ -108,6 +122,13 @@ export default function UploadPage() {
       <Typography variant="h4" sx={{ mb: 3 }}>
         Upload Policies
       </Typography>
+
+      {/* Inline error (e.g., invalid file type) */}
+      {error && !modalOpen && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Typography variant="body2" color="text.secondary">

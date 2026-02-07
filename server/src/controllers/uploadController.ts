@@ -214,6 +214,37 @@ export async function handleUpload(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  // Validate file extension early (avoid parsing non-CSV files like images)
+  const originalName = (file as Express.Multer.File).originalname || '';
+  if (!/\.csv$/i.test(originalName)) {
+    const durationMs = Date.now() - startTime;
+    await updateOperationMetrics(operationId, {
+      status: 'FAILED',
+      rows_inserted: 0,
+      rows_rejected: 0,
+      duration_ms: durationMs,
+      error_summary: 'Invalid file type (expected .csv)',
+    });
+    logUploadStructured('info', {
+      correlation_id: correlationId,
+      operation_id: operationId,
+      endpoint: '/upload',
+      duration_ms: durationMs,
+      inserted_count: 0,
+      rejected_count: 0,
+      status: 'FAILED',
+    });
+    res.status(400).json({
+      operation_id: operationId,
+      correlation_id: correlationId,
+      inserted_count: 0,
+      rejected_count: 0,
+      errors: [],
+      error: 'Invalid file type. Please upload a .csv file.',
+    });
+    return;
+  }
+
   const buffer = (file as Express.Multer.File & { buffer: Buffer }).buffer;
   if (!buffer || buffer.length === 0) {
     const durationMs = Date.now() - startTime;
