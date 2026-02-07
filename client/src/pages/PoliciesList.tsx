@@ -34,14 +34,14 @@ import { getPolicies, getAiInsights } from "../services/api";
 import type { Policy, AiInsightsResponse, PoliciesResponse, GetPoliciesParams } from "../services/api";
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Todos' },
+  { value: '', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'expired', label: 'Expired' },
   { value: 'cancelled', label: 'Cancelled' }
 ];
 
 const POLICY_TYPE_OPTIONS = [
-  { value: '', label: 'Todos' },
+  { value: '', label: 'All' },
   { value: 'Property', label: 'Property' },
   { value: 'Auto', label: 'Auto' }
 ];
